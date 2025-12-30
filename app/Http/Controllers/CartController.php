@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\CheckLowStockJob;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
@@ -66,6 +67,8 @@ class CartController extends Controller
             $stock->decrement('quantity');
         });
 
+        CheckLowStockJob::dispatch($product);
+
         return back();
     }
 
@@ -99,12 +102,16 @@ class CartController extends Controller
                 $item->update(['quantity' => $newQuantity]);
                 $stock->decrement('quantity', $difference);
             });
+
+            CheckLowStockJob::dispatch($item->product);
         } else {
             // Decreasing quantity, restore stock
             DB::transaction(function () use ($item, $newQuantity, $difference) {
                 $item->update(['quantity' => $newQuantity]);
                 $item->product->stock?->increment('quantity', abs($difference));
             });
+
+            CheckLowStockJob::dispatch($item->product);
         }
 
         return back();
