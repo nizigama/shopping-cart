@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +19,7 @@ class CartController extends Controller
     public function index(Request $request): Response
     {
         $cart = Cart::where('user_id', $request->user()->id)
-            ->with('items.product')
+            ->with('items.product.stock')
             ->first();
 
         $items = $cart ? $cart->items : collect();
@@ -35,23 +36,35 @@ class CartController extends Controller
      */
     public function store(Request $request, Product $product): RedirectResponse
     {
-        $cart = Cart::firstOrCreate([
-            'user_id' => $request->user()->id,
-        ]);
+        // Check if product has stock available
+        $stock = $product->stock;
 
-        $cartItem = CartItem::where('cart_id', $cart->id)
-            ->where('product_id', $product->id)
-            ->first();
-
-        if ($cartItem) {
-            $cartItem->increment('quantity');
-        } else {
-            CartItem::create([
-                'cart_id' => $cart->id,
-                'product_id' => $product->id,
-                'quantity' => 1,
-            ]);
+        if (!$stock || $stock->quantity < 1) {
+            return back()->withErrors(['stock' => 'This product is out of stock.']);
         }
+
+        DB::transaction(function () use ($request, $product, $stock) {
+            $cart = Cart::firstOrCreate([
+                'user_id' => $request->user()->id,
+            ]);
+
+            $cartItem = CartItem::where('cart_id', $cart->id)
+                ->where('product_id', $product->id)
+                ->first();
+
+            if ($cartItem) {
+                $cartItem->increment('quantity');
+            } else {
+                CartItem::create([
+                    'cart_id' => $cart->id,
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ]);
+            }
+
+            // Reduce stock
+            $stock->decrement('quantity');
+        });
 
         return back();
     }
@@ -70,9 +83,29 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $item->update([
-            'quantity' => $validated['quantity'],
-        ]);
+        $newQuantity = $validated['quantity'];
+        $currentQuantity = $item->quantity;
+        $difference = $newQuantity - $currentQuantity;
+
+        // If increasing quantity, check stock
+        if ($difference > 0) {
+            $stock = $item->product->stock;
+
+            if (!$stock || $stock->quantity < $difference) {
+                return back()->withErrors(['stock' => 'Not enough stock available.']);
+            }
+
+            DB::transaction(function () use ($item, $newQuantity, $stock, $difference) {
+                $item->update(['quantity' => $newQuantity]);
+                $stock->decrement('quantity', $difference);
+            });
+        } else {
+            // Decreasing quantity, restore stock
+            DB::transaction(function () use ($item, $newQuantity, $difference) {
+                $item->update(['quantity' => $newQuantity]);
+                $item->product->stock?->increment('quantity', abs($difference));
+            });
+        }
 
         return back();
     }
@@ -87,7 +120,14 @@ class CartController extends Controller
             abort(403);
         }
 
-        $item->delete();
+        DB::transaction(function () use ($item) {
+            $quantity = $item->quantity;
+
+            // Restore stock
+            $item->product->stock?->increment('quantity', $quantity);
+
+            $item->delete();
+        });
 
         return back();
     }
@@ -97,13 +137,21 @@ class CartController extends Controller
      */
     public function clear(Request $request): RedirectResponse
     {
-        $cart = Cart::where('user_id', $request->user()->id)->first();
+        $cart = Cart::where('user_id', $request->user()->id)
+            ->with('items.product.stock')
+            ->first();
 
         if ($cart) {
-            $cart->items()->delete();
+            DB::transaction(function () use ($cart) {
+                // Restore stock for all items
+                foreach ($cart->items as $item) {
+                    $item->product->stock?->increment('quantity', $item->quantity);
+                }
+
+                $cart->items()->delete();
+            });
         }
 
         return back();
     }
 }
-

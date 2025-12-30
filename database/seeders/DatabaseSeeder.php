@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -21,7 +22,9 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // Seed sample products for development
-        Product::factory(20)->create();
+        // Seed sample products with stock for development
+        Product::factory(20)->create()->each(function ($product) {
+            ProductStock::factory()->forProduct($product)->create();
+        });
     }
 }

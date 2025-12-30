@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\User;
 
 beforeEach(function () {
@@ -23,6 +24,34 @@ describe('products listing', function () {
             ->component('Dashboard')
             ->has('products.data', 5)
             ->has('filters')
+        );
+    });
+
+    test('products include stock information', function () {
+        $product = Product::factory()->create();
+        ProductStock::factory()->forProduct($product)->create(['quantity' => 50]);
+
+        $response = $this->actingAs($this->user)->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->has('products.data', 1)
+            ->has('products.data.0.stock')
+            ->where('products.data.0.stock.quantity', 50)
+        );
+    });
+
+    test('products without stock show null stock', function () {
+        Product::factory()->create();
+
+        $response = $this->actingAs($this->user)->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->has('products.data', 1)
+            ->where('products.data.0.stock', null)
         );
     });
 
@@ -119,4 +148,3 @@ describe('product search', function () {
         );
     });
 });
-

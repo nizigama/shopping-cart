@@ -60,6 +60,8 @@ watch(searchQuery, () => {
 });
 
 const addToCart = (product: Product) => {
+    if (isOutOfStock(product)) return;
+
     loadingProductId.value = product.id;
     router.post(cart.store(product).url, {}, {
         preserveScroll: true,
@@ -68,9 +70,10 @@ const addToCart = (product: Product) => {
                 description: `${product.name} has been added to your cart.`,
             });
         },
-        onError: () => {
+        onError: (errors) => {
+            const message = errors.stock || 'Please try again.';
             toast.error('Failed to add to cart', {
-                description: 'Please try again.',
+                description: message,
             });
         },
         onFinish: () => {
@@ -89,6 +92,14 @@ const formatPrice = (price: string) => {
 const goToPage = (url: string | null) => {
     if (!url) return;
     router.get(url, {}, { preserveState: true, preserveScroll: true });
+};
+
+const getStockQuantity = (product: Product) => {
+    return product.stock?.quantity ?? 0;
+};
+
+const isOutOfStock = (product: Product) => {
+    return getStockQuantity(product) < 1;
 };
 </script>
 
@@ -138,11 +149,21 @@ const goToPage = (url: string | null) => {
                     v-for="product in products.data"
                     :key="product.id"
                     class="group flex flex-col overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/30"
+                    :class="{ 'opacity-75': isOutOfStock(product) }"
                 >
                     <!-- Product Image Placeholder -->
                     <div class="relative aspect-square bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
                         <div class="text-6xl font-bold text-muted-foreground/20 uppercase">
                             {{ product.name.charAt(0) }}
+                        </div>
+                        <!-- Out of Stock Badge -->
+                        <div
+                            v-if="isOutOfStock(product)"
+                            class="absolute inset-0 flex items-center justify-center bg-background/80"
+                        >
+                            <span class="rounded-full bg-destructive px-3 py-1 text-sm font-medium text-destructive-foreground">
+                                Out of Stock
+                            </span>
                         </div>
                     </div>
 
@@ -159,17 +180,25 @@ const goToPage = (url: string | null) => {
                         <p class="text-2xl font-bold text-primary">
                             {{ formatPrice(product.price) }}
                         </p>
+                        <p
+                            class="mt-1 text-sm"
+                            :class="isOutOfStock(product) ? 'text-destructive' : 'text-muted-foreground'"
+                        >
+                            {{ isOutOfStock(product) ? 'Out of stock' : `${getStockQuantity(product)} in stock` }}
+                        </p>
                     </CardContent>
 
                     <CardFooter class="pt-0">
                         <Button
                             @click="addToCart(product)"
                             class="w-full gap-2"
-                            :disabled="loadingProductId === product.id"
+                            :disabled="loadingProductId === product.id || isOutOfStock(product)"
                         >
                             <Spinner v-if="loadingProductId === product.id" class="size-4" />
                             <ShoppingCart v-else class="size-4" />
-                            {{ loadingProductId === product.id ? 'Adding...' : 'Add to Cart' }}
+                            <template v-if="loadingProductId === product.id">Adding...</template>
+                            <template v-else-if="isOutOfStock(product)">Out of Stock</template>
+                            <template v-else>Add to Cart</template>
                         </Button>
                     </CardFooter>
                 </Card>

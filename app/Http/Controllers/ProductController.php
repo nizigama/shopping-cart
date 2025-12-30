@@ -17,6 +17,7 @@ class ProductController extends Controller
         $search = $request->input('search', '');
 
         $products = Product::query()
+            ->with('stock')
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })

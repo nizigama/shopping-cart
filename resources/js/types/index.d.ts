@@ -36,11 +36,20 @@ export interface User {
     updated_at: string;
 }
 
+export interface ProductStock {
+    id: number;
+    product_id: number;
+    quantity: number;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Product {
     id: number;
     name: string;
     description: string | null;
     price: string;
+    stock: ProductStock | null;
     created_at: string;
     updated_at: string;
 }

@@ -11,7 +11,6 @@ import { toast } from '@/components/ui/sonner';
 import {
     Card,
     CardContent,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
@@ -56,9 +55,10 @@ const updateQuantity = (item: CartItem, newQuantity: number) => {
                 description: `${item.product.name} quantity set to ${newQuantity}.`,
             });
         },
-        onError: () => {
+        onError: (errors) => {
+            const message = errors.stock || 'Please try again.';
             toast.error('Failed to update quantity', {
-                description: 'Please try again.',
+                description: message,
             });
         },
         onFinish: () => {
@@ -249,11 +249,6 @@ const isItemLoading = (itemId: number) => {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter>
-                            <Button class="w-full" size="lg">
-                                Proceed to Checkout
-                            </Button>
-                        </CardFooter>
                     </Card>
                 </div>
             </div>
