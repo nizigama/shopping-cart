@@ -12,16 +12,22 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import cart from '@/routes/cart';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { BookOpen, Folder, ShoppingBag, ShoppingCart } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Shop',
         href: dashboard(),
-        icon: LayoutGrid,
+        icon: ShoppingBag,
+    },
+    {
+        title: 'Cart',
+        href: cart.index(),
+        icon: ShoppingCart,
     },
 ];
 
