@@ -126,76 +126,15 @@ This runs concurrently:
 - **Pail** for real-time log viewing
 - **Vite** dev server for hot module replacement
 
-### With Server-Side Rendering (SSR)
-
-```bash
-composer dev:ssr
-```
-
-### Production Mode
-
-```bash
-npm run build
-php artisan serve
-```
-
 ## Email Testing with Mailpit
 
 For local email testing, start Mailpit using Docker:
 
 ```bash
-docker compose up -d
+docker compose up
 ```
 
-Access the Mailpit dashboard at `http://localhost:8025`
-
-Configure your `.env` file:
-
-```env
-MAIL_MAILER=smtp
-MAIL_HOST=localhost
-MAIL_PORT=1025
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-```
-
-## Configuration
-
-### Environment Variables
-
-Key configuration options in `.env`:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LOW_STOCK_THRESHOLD` | Stock level to trigger low stock alerts | `5` |
-| `STOCK_ADMIN_EMAIL` | Email address for admin notifications | `admin@shoppingcart.com` |
-
-### Queue Worker
-
-Background jobs (low stock alerts, sales reports) require a queue worker:
-
-```bash
-php artisan queue:work
-```
-
-Or use the database queue driver in `.env`:
-
-```env
-QUEUE_CONNECTION=database
-```
-
-### Scheduled Tasks
-
-To enable the daily sales report (runs at 6 PM):
-
-```bash
-# Run once to test
-php artisan sales:report
-
-# Set up scheduler (add to crontab)
-* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
-```
+Access the Mailpit dashboard at `http://localhost:8025` for testing emails.
 
 ## Testing
 
